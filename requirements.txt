@@ -4,3 +4,6 @@ torch
 transformers
 google-generativeai
 python-dotenv
+chromadb
+langchain
+langchain-community
