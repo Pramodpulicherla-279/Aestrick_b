@@ -78,18 +78,68 @@ def general_mode_response(question):
 
 
 # Textbook Mode: RAG + Gemini + YouTube
+# def textbook_mode_response(question):
+#     results = db.similarity_search(question, k=3)
+#     if not results:
+#         # No relevant context, switch to general mode
+#         return {
+#             "answer": "This is an irrelevant question for textbook knowledge, I'm switching to general mode.",
+#             **general_mode_response(question)
+#         }
+#     context = " ".join([doc.page_content for doc in results])
+#     # print(results)
+
+#     prompt = (
+#         "You are a helpful AI tutor for school students. "
+#         "Use ONLY the following textbook context to answer. "
+#         "If the context does not contain the answer, say you don't know. "
+#         "Respond using the Socratic method, ask follow-up questions, encourage thinking, "
+#         "and be simple and age-appropriate.\n\n"
+#         f"Context:\n{context}\n\n"
+#         f"Question: {question}\n"
+#         "Answer:"
+#     )
+
+#     model = genai.GenerativeModel("gemini-2.5-flash")
+#     response = model.generate_content(prompt)
+#     answer = response.text.strip()
+
+#     video_ids = search_youtube(question)
+#     selected_video = random.choice(video_ids) if video_ids else "dQw4w9WgXcQ"
+
+#     youtube_iframe = (
+#         f'<iframe width="300" height="200" src="https://www.youtube.com/embed/{selected_video}" frameborder="0"></iframe>'
+#     )
+
+#     return {"answer": answer, "youtube": youtube_iframe}
+
 def textbook_mode_response(question):
-    results = db.similarity_search(question, k=3)    
-    if not results:
-        return {
-            "answer": "Sorry, I couldn't find relevant information in your textbook. Would you like a general answer instead?",
-            "youtube": ""
-        }
-    context = " ".join([doc.page_content for doc in results])
+    # Use similarity_search_with_score to get scores (if available)
+    try:
+        results = db.similarity_search_with_score(question, k=3)
+        # Set a similarity threshold (tune as needed)
+        SIMILARITY_THRESHOLD = 1 # Lower is more similar for cosine distance
+        filtered = [doc for doc, score in results if score < SIMILARITY_THRESHOLD]
+    except Exception:
+        # Fallback if method not available
+        filtered = db.similarity_search(question, k=3)
+
+    if not filtered:
+        # No relevant context, switch to general mode
+        general = general_mode_response(question)
+        general["answer"] = (
+            "This is an irrelevant question for textbook knowledge, I'm switching to general mode.<br><br>"
+            + general["answer"]
+        )
+        return general
+    
+    context = " ".join([doc.page_content for doc in filtered])
+    # print(results)
 
     prompt = (
         "You are a helpful AI tutor for school students. "
         "Use ONLY the following textbook context to answer. "
+        "If the context does not contain the answer, say you don't know. "
         "Respond using the Socratic method, ask follow-up questions, encourage thinking, "
         "and be simple and age-appropriate.\n\n"
         f"Context:\n{context}\n\n"
@@ -97,7 +147,7 @@ def textbook_mode_response(question):
         "Answer:"
     )
 
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content(prompt)
     answer = response.text.strip()
 
