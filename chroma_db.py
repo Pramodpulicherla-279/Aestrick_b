@@ -28,3 +28,5 @@ print(f"Number of empty document chunks: {len(empty_docs)}")
 if len(documents) == 0 or len(empty_docs) == len(documents):
     print("ERROR: No valid document chunks to embed. Check your PDF and splitting logic.")
     exit(1)
+
+retriever = db.as_retriever()
